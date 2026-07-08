@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gerador de Imagens Dinamicas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Poppins:wght@400;600;700&family=Roboto:wght@400;700&family=Open+Sans:wght@400;600;700&family=Lato:wght@400;700;900&family=Playfair+Display:wght@400;700;900&family=Merriweather:wght@400;700&family=EB+Garamond:wght@400;500;600&family=Cinzel:wght@400;600;700&family=Great+Vibes&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🖼️ Gerador de Imagens</div>
+    <div class="topbar-actions">
+      <input id="tpl-name" class="name-input" placeholder="Nome do template" disabled>
+      <select id="tpl-format" class="select" disabled title="Formato padrao da URL">
+        <option value="png">PNG</option>
+        <option value="jpeg">JPEG</option>
+        <option value="pdf">PDF</option>
+      </select>
+      <button id="btn-save" class="btn primary" disabled>Salvar</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- Coluna esquerda: lista de templates -->
+    <aside class="sidebar-left">
+      <button id="btn-new" class="btn block">+ Nova imagem</button>
+      <div class="section-title">Meus links</div>
+      <ul id="tpl-list" class="tpl-list"></ul>
+    </aside>
+
+    <!-- Centro: stage -->
+    <section class="stage-area">
+      <div id="stage-empty" class="empty">
+        <p>Crie uma nova imagem e suba o fundo (ex.: o certificado).</p>
+      </div>
+      <div id="stage-wrap" class="stage-wrap" hidden>
+        <div id="stage" class="stage"></div>
+      </div>
+    </section>
+
+    <!-- Coluna direita: propriedades / parametros / URL -->
+    <aside class="sidebar-right">
+      <div class="panel">
+        <button id="btn-add-text" class="btn block" disabled>+ Adicionar texto</button>
+      </div>
+
+      <div id="props" class="panel props" hidden>
+        <div class="section-title">Propriedades</div>
+        <label>Texto / valor padrao
+          <textarea id="p-content" rows="2"></textarea>
+        </label>
+        <label>Parametro de URL (deixe vazio p/ texto fixo)
+          <input id="p-binding" placeholder="ex.: name">
+        </label>
+        <div class="grid2">
+          <label>Fonte
+            <select id="p-font"></select>
+          </label>
+          <label>Peso
+            <select id="p-weight">
+              <option>400</option><option>600</option><option>700</option>
+              <option>800</option><option>900</option>
+            </select>
+          </label>
+          <label>Tamanho (px)
+            <input id="p-size" type="number" min="6" max="400">
+          </label>
+          <label>Cor
+            <input id="p-color" type="color">
+          </label>
+          <label>Alinhar
+            <select id="p-align">
+              <option value="left">Esquerda</option>
+              <option value="center">Centro</option>
+              <option value="right">Direita</option>
+            </select>
+          </label>
+          <label>Largura (px)
+            <input id="p-width" type="number" min="20" max="4000">
+          </label>
+          <label>X (px)
+            <input id="p-x" type="number">
+          </label>
+          <label>Y (px)
+            <input id="p-y" type="number">
+          </label>
+          <label>Espaco entre letras
+            <input id="p-ls" type="number" step="0.5">
+          </label>
+          <label>Altura de linha
+            <input id="p-lh" type="number" step="0.1" min="0.8" max="3">
+          </label>
+        </div>
+        <div class="checks">
+          <label class="chk"><input id="p-upper" type="checkbox"> MAIUSCULAS</label>
+          <label class="chk"><input id="p-italic" type="checkbox"> Italico</label>
+          <label class="chk"><input id="p-shadow" type="checkbox"> Sombra</label>
+        </div>
+        <button id="btn-del" class="btn danger block">Excluir elemento</button>
+      </div>
+
+      <div id="url-panel" class="panel" hidden>
+        <div class="section-title">URL da imagem</div>
+        <div class="params-form" id="params-form"></div>
+        <code id="gen-url" class="gen-url"></code>
+        <div class="row">
+          <button id="btn-copy" class="btn small">Copiar URL</button>
+          <button id="btn-open" class="btn small">Abrir imagem</button>
+          <button id="btn-pdf" class="btn small">Baixar PDF</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <input type="file" id="file-input" accept="image/*" hidden>
+  <script src="editor.js"></script>
+</body>
+</html>

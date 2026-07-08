@@ -1,0 +1,22 @@
+{
+  "name": "gerador-imagem-dinamica",
+  "version": "0.2.0",
+  "description": "Gerador de imagens dinamicas via URL (clone self-hosted do NiftyImages) - deploy Vercel",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "^131.0.1",
+    "@vercel/blob": "^0.27.0",
+    "express": "^4.21.0",
+    "multer": "^2.0.0",
+    "nanoid": "^5.0.7",
+    "puppeteer-core": "^23.11.1"
+  }
+}
