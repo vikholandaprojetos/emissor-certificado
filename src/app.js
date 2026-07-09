@@ -151,6 +151,21 @@ app.get('/i/:id', wrap(async (req, res) => {
   }
 }));
 
+// Diagnostico temporario: testa put/list reais no Blob e mostra o erro exato
+app.get('/_diag/blob', wrap(async (_req, res) => {
+  const { put, list } = await import('@vercel/blob');
+  const steps = { token: !!process.env.BLOB_READ_WRITE_TOKEN };
+  try {
+    const r = await put(`diag/test-${nanoid(6)}.txt`, 'hello', { access: 'public', addRandomSuffix: true });
+    steps.put = 'ok: ' + r.url;
+  } catch (e) { steps.put = 'ERROR: ' + (e?.message || e); }
+  try {
+    const { blobs } = await list({ prefix: 'diag/' });
+    steps.list = `ok: ${blobs.length} blobs`;
+  } catch (e) { steps.list = 'ERROR: ' + (e?.message || e); }
+  res.json(steps);
+}));
+
 app.get('/healthz', (_req, res) =>
   res.json({
     ok: true,
