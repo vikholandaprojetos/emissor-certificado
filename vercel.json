@@ -9,7 +9,6 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.js" },
     { "source": "/i/(.*)", "destination": "/api/index.js" },
-    { "source": "/healthz", "destination": "/api/index.js" },
-    { "source": "/", "destination": "/admin/index.html" }
+    { "source": "/healthz", "destination": "/api/index.js" }
   ]
 }
