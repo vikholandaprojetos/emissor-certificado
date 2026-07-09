@@ -147,6 +147,9 @@ app.get('/i/:id', wrap(async (req, res) => {
     res.send(buffer);
   } catch (err) {
     console.error('render error', err);
+    if (req.query._debug) {
+      return res.status(500).type('text').send('RENDER ERROR:\n' + (err?.stack || err?.message || String(err)));
+    }
     res.status(500).send('render error');
   }
 }));
