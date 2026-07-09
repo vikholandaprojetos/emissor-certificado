@@ -7,6 +7,7 @@ import { renderImage } from './renderer.js';
 import { FONTS } from './fonts.js';
 import { LANDING_HTML } from './landing.js';
 import { loginPage } from './login-page.js';
+import { viewPage } from './view-page.js';
 import { ASSETS } from './webui-assets.js';
 
 const app = express();
@@ -48,6 +49,14 @@ function clearSession(res) {
 
 // ---- Landing publica ----
 app.get('/', (_req, res) => res.type('html').send(LANDING_HTML));
+
+// ---- Pagina publica de visualizacao + download: /view/:id?nome=... ----
+app.get('/view/:id', wrap(async (req, res) => {
+  const tpl = await templates.get(req.params.id);
+  if (!tpl) return res.status(404).send('not found');
+  const qs = new URLSearchParams(req.query).toString();
+  res.type('html').send(viewPage(req.params.id, qs, tpl.name));
+}));
 
 // ---- Login / logout ----
 app.get('/admin/login', (req, res) => {
@@ -134,12 +143,17 @@ app.post('/api/uploads', upload.single('file'), wrap(async (req, res) => {
 app.get('/i/:id', wrap(async (req, res) => {
   const tpl = await templates.get(req.params.id);
   if (!tpl) return res.status(404).send('not found');
-  const { _format, ...values } = req.query;
+  const { _format, _dl, ...values } = req.query;
   const format = pickFormat(_format || tpl.format);
   try {
     const { buffer, contentType } = await renderImage(tpl, values, format);
     res.set('Content-Type', contentType);
     res.set('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+    if (_dl) {
+      const ext = format === 'jpeg' ? 'jpg' : 'png';
+      const safe = (tpl.name || 'imagem').replace(/[^\w.-]+/g, '_');
+      res.set('Content-Disposition', `attachment; filename="${safe}.${ext}"`);
+    }
     res.send(buffer);
   } catch (err) {
     console.error('render error', err);

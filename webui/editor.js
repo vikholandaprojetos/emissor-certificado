@@ -353,19 +353,36 @@ function renderUrlPanel() {
     form.appendChild(label);
   }
   $('#gen-url').textContent = genUrl();
+  $('#view-url').textContent = genViewUrl();
 }
 
-function genUrl() {
-  const base = location.origin + '/i/' + state.tpl.id;
-  const params = bindings();
-  const qs = params
+function queryString() {
+  return bindings()
     .map((p) => `${encodeURIComponent(p)}=${encodeURIComponent(state.testValues[p] || 'valor')}`)
     .join('&');
-  return qs ? `${base}?${qs}` : base;
+}
+function genUrl() {
+  const qs = queryString();
+  return location.origin + '/i/' + state.tpl.id + (qs ? `?${qs}` : '');
+}
+function genViewUrl() {
+  const qs = queryString();
+  return location.origin + '/view/' + state.tpl.id + (qs ? `?${qs}` : '');
 }
 
 $('#btn-copy').onclick = () => navigator.clipboard.writeText(genUrl());
 $('#btn-open').onclick = () => window.open(genUrl(), '_blank');
+$('#btn-download').onclick = () => {
+  const url = genUrl();
+  const a = document.createElement('a');
+  a.href = url + (url.includes('?') ? '&' : '?') + '_dl=1';
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+};
+$('#btn-copy-view').onclick = () => navigator.clipboard.writeText(genViewUrl());
+$('#btn-open-view').onclick = () => window.open(genViewUrl(), '_blank');
 
 // ---------- salvar ----------
 $('#btn-save').onclick = async () => {
