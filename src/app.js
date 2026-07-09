@@ -151,26 +151,14 @@ app.get('/i/:id', wrap(async (req, res) => {
   }
 }));
 
-// Diagnostico temporario: testa o fluxo PRIVADO (put + ler de volta via downloadUrl)
+// Diagnostico temporario: confirma se o store aceita gravar PUBLICO (o que usamos)
 app.get('/_diag/blob', wrap(async (_req, res) => {
-  const { put, head } = await import('@vercel/blob');
+  const { put } = await import('@vercel/blob');
   const steps = { token: !!process.env.BLOB_READ_WRITE_TOKEN };
-  let putRes;
   try {
-    putRes = await put(`diag/test-${nanoid(6)}.json`, JSON.stringify({ hi: 1 }), {
-      access: 'private', contentType: 'application/json', addRandomSuffix: true,
-    });
-    steps.put = 'ok';
-    steps.hasDownloadUrl = !!putRes.downloadUrl;
-    steps.url = putRes.url;
-    steps.downloadUrl = putRes.downloadUrl;
+    const r = await put(`diag/test-${nanoid(6)}.txt`, 'hello', { access: 'public', addRandomSuffix: true });
+    steps.put = 'ok (store PUBLICO): ' + r.url;
   } catch (e) { steps.put = 'ERROR: ' + (e?.message || e); }
-  if (putRes) {
-    try {
-      const r = await fetch(putRes.downloadUrl || putRes.url);
-      steps.readBack = `${r.status} ${r.ok ? 'OK ' + (await r.text()) : 'FAIL'}`;
-    } catch (e) { steps.readBack = 'ERROR: ' + (e?.message || e); }
-  }
   res.json(steps);
 }));
 
