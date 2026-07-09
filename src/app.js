@@ -171,6 +171,9 @@ app.get('/healthz', (_req, res) =>
     blob: !!process.env.BLOB_READ_WRITE_TOKEN,
     auth: AUTH_ON,
     blobVars: Object.keys(process.env).filter((k) => k.includes('BLOB')),
+    node: process.version,
+    arch: process.arch,
+    region: process.env.VERCEL_REGION || null,
   })
 );
 
