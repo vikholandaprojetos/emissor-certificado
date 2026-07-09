@@ -1,18 +1,34 @@
 import express from 'express';
 import multer from 'multer';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { nanoid } from 'nanoid';
 import { templates, putUpload } from './store.js';
 import { renderImage } from './renderer.js';
 import { FONTS } from './fonts.js';
+import { LANDING_HTML } from './landing.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const WEBUI_DIR = path.join(__dirname, '..', 'webui');
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 
+// ---- Basic Auth (protege /admin e /api). Vazio = sem senha. ----
+const ADMIN_USER = process.env.ADMIN_USER || '';
+const ADMIN_PASS = process.env.ADMIN_PASS || '';
+function basicAuth(req, res, next) {
+  if (!ADMIN_USER && !ADMIN_PASS) return next();
+  const [scheme, b64] = (req.headers.authorization || '').split(' ');
+  if (scheme === 'Basic' && b64) {
+    const [u, p] = Buffer.from(b64, 'base64').toString().split(':');
+    if (u === ADMIN_USER && p === ADMIN_PASS) return next();
+  }
+  res.set('WWW-Authenticate', 'Basic realm="Painel"').status(401).send('Auth required');
+}
+
 // upload em memoria -> Vercel Blob (limite ~4.5MB de body na Vercel)
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 4 * 1024 * 1024 },
-});
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
 
 const ALLOWED_FORMATS = ['png', 'jpeg', 'pdf'];
 const pickFormat = (f) => (ALLOWED_FORMATS.includes(f) ? f : 'png');
@@ -27,7 +43,15 @@ function normalizeData(body) {
   };
 }
 
-// ---- API do admin (protegida pelo Edge Middleware) ----
+// ---- Landing publica ----
+app.get('/', (_req, res) => res.type('html').send(LANDING_HTML));
+
+// ---- Painel admin (estatico, protegido) ----
+app.use('/admin', basicAuth, express.static(WEBUI_DIR));
+
+// ---- API (protegida) ----
+app.use('/api', basicAuth);
+
 app.get('/api/fonts', (_req, res) => res.json(FONTS));
 
 app.get('/api/templates', async (_req, res) => {
@@ -81,7 +105,6 @@ app.get('/i/:id', async (req, res) => {
   try {
     const { buffer, contentType } = await renderImage(tpl, values, format);
     res.set('Content-Type', contentType);
-    // cache na CDN da Vercel: repeticoes nao reexecutam a funcao
     res.set('Cache-Control', 'public, max-age=86400, s-maxage=86400');
     if (format === 'pdf') {
       const safe = (tpl.name || 'certificado').replace(/[^\w.-]+/g, '_');
