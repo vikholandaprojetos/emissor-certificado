@@ -366,11 +366,6 @@ function genUrl() {
 
 $('#btn-copy').onclick = () => navigator.clipboard.writeText(genUrl());
 $('#btn-open').onclick = () => window.open(genUrl(), '_blank');
-$('#btn-pdf').onclick = () => {
-  const url = genUrl();
-  const sep = url.includes('?') ? '&' : '?';
-  window.open(`${url}${sep}_format=pdf&_dl=1`, '_blank');
-};
 
 // ---------- salvar ----------
 $('#btn-save').onclick = async () => {

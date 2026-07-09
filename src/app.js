@@ -84,7 +84,7 @@ app.use('/api', (req, res, next) => {
 });
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
-const ALLOWED_FORMATS = ['png', 'jpeg', 'pdf'];
+const ALLOWED_FORMATS = ['png', 'jpeg'];
 const pickFormat = (f) => (ALLOWED_FORMATS.includes(f) ? f : 'png');
 function normalizeData(body) {
   return {
@@ -134,16 +134,12 @@ app.post('/api/uploads', upload.single('file'), wrap(async (req, res) => {
 app.get('/i/:id', wrap(async (req, res) => {
   const tpl = await templates.get(req.params.id);
   if (!tpl) return res.status(404).send('not found');
-  const { _format, _dl, ...values } = req.query;
+  const { _format, ...values } = req.query;
   const format = pickFormat(_format || tpl.format);
   try {
     const { buffer, contentType } = await renderImage(tpl, values, format);
     res.set('Content-Type', contentType);
     res.set('Cache-Control', 'public, max-age=86400, s-maxage=86400');
-    if (format === 'pdf') {
-      const safe = (tpl.name || 'certificado').replace(/[^\w.-]+/g, '_');
-      res.set('Content-Disposition', `${_dl ? 'attachment' : 'inline'}; filename="${safe}.pdf"`);
-    }
     res.send(buffer);
   } catch (err) {
     console.error('render error', err);
@@ -152,17 +148,6 @@ app.get('/i/:id', wrap(async (req, res) => {
     }
     res.status(500).send('render error');
   }
-}));
-
-// Diagnostico temporario: confirma se o store aceita gravar PUBLICO (o que usamos)
-app.get('/_diag/blob', wrap(async (_req, res) => {
-  const { put } = await import('@vercel/blob');
-  const steps = { token: !!process.env.BLOB_READ_WRITE_TOKEN };
-  try {
-    const r = await put(`diag/test-${nanoid(6)}.txt`, 'hello', { access: 'public', addRandomSuffix: true });
-    steps.put = 'ok (store PUBLICO): ' + r.url;
-  } catch (e) { steps.put = 'ERROR: ' + (e?.message || e); }
-  res.json(steps);
 }));
 
 app.get('/healthz', (_req, res) =>
