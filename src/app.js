@@ -1,38 +1,88 @@
 import express from 'express';
 import multer from 'multer';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 import { nanoid } from 'nanoid';
 import { templates, putUpload } from './store.js';
 import { renderImage } from './renderer.js';
 import { FONTS } from './fonts.js';
 import { LANDING_HTML } from './landing.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const WEBUI_DIR = path.join(__dirname, '..', 'webui');
+import { loginPage } from './login-page.js';
+import { ASSETS } from './webui-assets.js';
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: false }));
 
-// ---- Basic Auth (protege /admin e /api). Vazio = sem senha. ----
+// ---- Sessao por cookie assinado (login estilizado, com "Sair") ----
 const ADMIN_USER = process.env.ADMIN_USER || '';
 const ADMIN_PASS = process.env.ADMIN_PASS || '';
-function basicAuth(req, res, next) {
-  if (!ADMIN_USER && !ADMIN_PASS) return next();
-  const [scheme, b64] = (req.headers.authorization || '').split(' ');
-  if (scheme === 'Basic' && b64) {
-    const [u, p] = Buffer.from(b64, 'base64').toString().split(':');
-    if (u === ADMIN_USER && p === ADMIN_PASS) return next();
-  }
-  res.set('WWW-Authenticate', 'Basic realm="Painel"').status(401).send('Auth required');
+const AUTH_ON = !!(ADMIN_USER || ADMIN_PASS);
+const SECRET = process.env.SESSION_SECRET || `${ADMIN_USER}:${ADMIN_PASS}:emissor`;
+const TOKEN = crypto.createHmac('sha256', SECRET).update('authenticated-v1').digest('hex');
+
+function parseCookies(header) {
+  const out = {};
+  (header || '').split(';').forEach((p) => {
+    const i = p.indexOf('=');
+    if (i > 0) out[p.slice(0, i).trim()] = decodeURIComponent(p.slice(i + 1).trim());
+  });
+  return out;
+}
+function isAuthed(req) {
+  if (!AUTH_ON) return true;
+  const sid = parseCookies(req.headers.cookie).sid || '';
+  if (sid.length !== TOKEN.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(sid), Buffer.from(TOKEN));
+}
+function setSession(req, res) {
+  const https = String(req.headers['x-forwarded-proto'] || '').includes('https');
+  res.setHeader('Set-Cookie',
+    `sid=${TOKEN}; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax${https ? '; Secure' : ''}`);
+}
+function clearSession(res) {
+  res.setHeader('Set-Cookie', 'sid=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
 }
 
-// upload em memoria -> Vercel Blob (limite ~4.5MB de body na Vercel)
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
+// ---- Landing publica ----
+app.get('/', (_req, res) => res.type('html').send(LANDING_HTML));
 
+// ---- Login / logout ----
+app.get('/admin/login', (req, res) => {
+  if (isAuthed(req)) return res.redirect('/admin/');
+  res.type('html').send(loginPage());
+});
+app.post('/admin/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (AUTH_ON && username === ADMIN_USER && password === ADMIN_PASS) {
+    setSession(req, res);
+    return res.redirect('/admin/');
+  }
+  res.status(401).type('html').send(loginPage('Usuário ou senha inválidos.'));
+});
+app.get('/admin/logout', (_req, res) => {
+  clearSession(res);
+  res.redirect('/admin/login');
+});
+
+// ---- Assets do painel (nao sensiveis: apenas client-side) ----
+app.get('/admin/style.css', (_req, res) => res.type('css').send(ASSETS.css));
+app.get('/admin/editor.js', (_req, res) => res.type('js').send(ASSETS.js));
+
+// ---- Painel (protegido) ----
+app.get(['/admin', '/admin/'], (req, res) => {
+  if (!isAuthed(req)) return res.redirect('/admin/login');
+  res.type('html').send(ASSETS.index);
+});
+
+// ---- API (protegida) ----
+app.use('/api', (req, res, next) => {
+  if (isAuthed(req)) return next();
+  res.status(401).json({ error: 'auth required' });
+});
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
 const ALLOWED_FORMATS = ['png', 'jpeg', 'pdf'];
 const pickFormat = (f) => (ALLOWED_FORMATS.includes(f) ? f : 'png');
-
 function normalizeData(body) {
   return {
     width: Number(body.width) || 1000,
@@ -43,35 +93,23 @@ function normalizeData(body) {
   };
 }
 
-// ---- Landing publica ----
-app.get('/', (_req, res) => res.type('html').send(LANDING_HTML));
-
-// ---- Painel admin (estatico, protegido) ----
-app.use('/admin', basicAuth, express.static(WEBUI_DIR));
-
-// ---- API (protegida) ----
-app.use('/api', basicAuth);
-
 app.get('/api/fonts', (_req, res) => res.json(FONTS));
 
 app.get('/api/templates', async (_req, res) => {
   const list = await templates.list();
   res.json(list.map((t) => ({ id: t.id, name: t.name, updatedAt: t.updatedAt })));
 });
-
 app.get('/api/templates/:id', async (req, res) => {
   const tpl = await templates.get(req.params.id);
   if (!tpl) return res.status(404).json({ error: 'not found' });
   res.json(tpl);
 });
-
 app.post('/api/templates', async (req, res) => {
   const { name, ...rest } = req.body || {};
   const id = nanoid(8);
   const tpl = await templates.create({ id, name: name || 'Sem nome', data: normalizeData(rest) });
   res.status(201).json(tpl);
 });
-
 app.put('/api/templates/:id', async (req, res) => {
   const existing = await templates.get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'not found' });
@@ -79,12 +117,10 @@ app.put('/api/templates/:id', async (req, res) => {
   const tpl = await templates.update(req.params.id, { name: name || existing.name, data: normalizeData(rest) });
   res.json(tpl);
 });
-
 app.delete('/api/templates/:id', async (req, res) => {
   await templates.remove(req.params.id);
   res.status(204).end();
 });
-
 app.post('/api/uploads', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'no file' });
   try {

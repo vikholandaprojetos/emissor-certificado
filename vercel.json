@@ -3,8 +3,7 @@
   "functions": {
     "api/index.js": {
       "memory": 1024,
-      "maxDuration": 60,
-      "includeFiles": "webui/**"
+      "maxDuration": 60
     }
   },
   "rewrites": [
