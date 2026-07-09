@@ -1,6 +1,6 @@
 // Renderizacao serverless: puppeteer-core + @sparticuz/chromium (Chromium que cabe na Vercel).
 // Sem cache em disco (serverless nao tem disco persistente) -> cache via Cache-Control/CDN.
-import chromium from '@sparticuz/chromium';
+import chromium from '@sparticuz/chromium-min';
 import puppeteer from 'puppeteer-core';
 import { stageHTML } from './render-html.js';
 import { DEVICE_SCALE } from './config.js';
