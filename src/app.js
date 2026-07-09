@@ -151,18 +151,26 @@ app.get('/i/:id', wrap(async (req, res) => {
   }
 }));
 
-// Diagnostico temporario: testa put/list reais no Blob e mostra o erro exato
+// Diagnostico temporario: testa o fluxo PRIVADO (put + ler de volta via downloadUrl)
 app.get('/_diag/blob', wrap(async (_req, res) => {
-  const { put, list } = await import('@vercel/blob');
+  const { put, head } = await import('@vercel/blob');
   const steps = { token: !!process.env.BLOB_READ_WRITE_TOKEN };
+  let putRes;
   try {
-    const r = await put(`diag/test-${nanoid(6)}.txt`, 'hello', { access: 'public', addRandomSuffix: true });
-    steps.put = 'ok: ' + r.url;
+    putRes = await put(`diag/test-${nanoid(6)}.json`, JSON.stringify({ hi: 1 }), {
+      access: 'private', contentType: 'application/json', addRandomSuffix: true,
+    });
+    steps.put = 'ok';
+    steps.hasDownloadUrl = !!putRes.downloadUrl;
+    steps.url = putRes.url;
+    steps.downloadUrl = putRes.downloadUrl;
   } catch (e) { steps.put = 'ERROR: ' + (e?.message || e); }
-  try {
-    const { blobs } = await list({ prefix: 'diag/' });
-    steps.list = `ok: ${blobs.length} blobs`;
-  } catch (e) { steps.list = 'ERROR: ' + (e?.message || e); }
+  if (putRes) {
+    try {
+      const r = await fetch(putRes.downloadUrl || putRes.url);
+      steps.readBack = `${r.status} ${r.ok ? 'OK ' + (await r.text()) : 'FAIL'}`;
+    } catch (e) { steps.readBack = 'ERROR: ' + (e?.message || e); }
+  }
   res.json(steps);
 }));
 
