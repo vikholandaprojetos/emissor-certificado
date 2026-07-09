@@ -11,15 +11,17 @@ const CONTENT_TYPE = { png: 'image/png', jpeg: 'image/jpeg', pdf: 'application/p
 chromium.setGraphicsMode = false;
 
 // Se PUPPETEER_EXECUTABLE_PATH estiver setado, usamos um Chrome local (dev).
-// Caso contrario, usamos o Chromium empacotado do @sparticuz (Vercel).
+// Caso contrario, baixamos o "pack" completo do Chromium em runtime (traz TODAS as
+// libs, ex.: libnss3.so) — mais confiavel na Vercel do que depender do bundle.
 const LOCAL_CHROME = process.env.PUPPETEER_EXECUTABLE_PATH || '';
+const PACK_URL = 'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar';
 
 let browserPromise = null;
 async function getBrowser() {
   if (!browserPromise) {
     browserPromise = puppeteer.launch({
       args: LOCAL_CHROME ? ['--no-sandbox', '--disable-dev-shm-usage'] : chromium.args,
-      executablePath: LOCAL_CHROME || (await chromium.executablePath()),
+      executablePath: LOCAL_CHROME || (await chromium.executablePath(PACK_URL)),
       headless: LOCAL_CHROME ? true : chromium.headless,
       defaultViewport: null,
     });
