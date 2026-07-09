@@ -152,7 +152,12 @@ app.get('/i/:id', wrap(async (req, res) => {
 }));
 
 app.get('/healthz', (_req, res) =>
-  res.json({ ok: true, blob: !!process.env.BLOB_READ_WRITE_TOKEN, auth: AUTH_ON })
+  res.json({
+    ok: true,
+    blob: !!process.env.BLOB_READ_WRITE_TOKEN,
+    auth: AUTH_ON,
+    blobVars: Object.keys(process.env).filter((k) => k.includes('BLOB')),
+  })
 );
 
 // Handler de erro: qualquer excecao async vira 500 JSON com a mensagem real
