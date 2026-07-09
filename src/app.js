@@ -13,6 +13,9 @@ const app = express();
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: false }));
 
+// Envolve handlers async: erros viram resposta 500 rapida (evita travar em 504)
+const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
 // ---- Sessao por cookie assinado (login estilizado, com "Sair") ----
 const ADMIN_USER = process.env.ADMIN_USER || '';
 const ADMIN_PASS = process.env.ADMIN_PASS || '';
@@ -95,45 +98,40 @@ function normalizeData(body) {
 
 app.get('/api/fonts', (_req, res) => res.json(FONTS));
 
-app.get('/api/templates', async (_req, res) => {
+app.get('/api/templates', wrap(async (_req, res) => {
   const list = await templates.list();
   res.json(list.map((t) => ({ id: t.id, name: t.name, updatedAt: t.updatedAt })));
-});
-app.get('/api/templates/:id', async (req, res) => {
+}));
+app.get('/api/templates/:id', wrap(async (req, res) => {
   const tpl = await templates.get(req.params.id);
   if (!tpl) return res.status(404).json({ error: 'not found' });
   res.json(tpl);
-});
-app.post('/api/templates', async (req, res) => {
+}));
+app.post('/api/templates', wrap(async (req, res) => {
   const { name, ...rest } = req.body || {};
   const id = nanoid(8);
   const tpl = await templates.create({ id, name: name || 'Sem nome', data: normalizeData(rest) });
   res.status(201).json(tpl);
-});
-app.put('/api/templates/:id', async (req, res) => {
+}));
+app.put('/api/templates/:id', wrap(async (req, res) => {
   const existing = await templates.get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'not found' });
   const { name, ...rest } = req.body || {};
   const tpl = await templates.update(req.params.id, { name: name || existing.name, data: normalizeData(rest) });
   res.json(tpl);
-});
-app.delete('/api/templates/:id', async (req, res) => {
+}));
+app.delete('/api/templates/:id', wrap(async (req, res) => {
   await templates.remove(req.params.id);
   res.status(204).end();
-});
-app.post('/api/uploads', upload.single('file'), async (req, res) => {
+}));
+app.post('/api/uploads', upload.single('file'), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'no file' });
-  try {
-    const url = await putUpload(req.file);
-    res.json({ url });
-  } catch (err) {
-    console.error('upload error', err);
-    res.status(500).json({ error: 'upload failed' });
-  }
-});
+  const url = await putUpload(req.file);
+  res.json({ url });
+}));
 
 // ---- Endpoint publico da imagem: /i/:id?name=victor ----
-app.get('/i/:id', async (req, res) => {
+app.get('/i/:id', wrap(async (req, res) => {
   const tpl = await templates.get(req.params.id);
   if (!tpl) return res.status(404).send('not found');
   const { _format, _dl, ...values } = req.query;
@@ -151,8 +149,16 @@ app.get('/i/:id', async (req, res) => {
     console.error('render error', err);
     res.status(500).send('render error');
   }
-});
+}));
 
-app.get('/healthz', (_req, res) => res.json({ ok: true }));
+app.get('/healthz', (_req, res) =>
+  res.json({ ok: true, blob: !!process.env.BLOB_READ_WRITE_TOKEN, auth: AUTH_ON })
+);
+
+// Handler de erro: qualquer excecao async vira 500 JSON com a mensagem real
+app.use((err, _req, res, _next) => {
+  console.error('API error:', err);
+  res.status(500).json({ error: err?.message || 'internal error' });
+});
 
 export default app;

@@ -5,6 +5,12 @@ import { nanoid } from 'nanoid';
 
 const T = 'templates/';
 
+function requireToken() {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new Error('Vercel Blob nao conectado: falta BLOB_READ_WRITE_TOKEN. Conecte um Blob Store na aba Storage e faca Redeploy.');
+  }
+}
+
 async function readJson(url) {
   const r = await fetch(url, { cache: 'no-store' });
   if (!r.ok) throw new Error('blob fetch ' + r.status);
@@ -22,6 +28,7 @@ function putJson(pathname, obj) {
 
 export const templates = {
   async list() {
+    requireToken();
     const { blobs } = await list({ prefix: T });
     const arr = await Promise.all(blobs.map((b) => readJson(b.url).catch(() => null)));
     return arr.filter(Boolean).sort((a, b) => b.updatedAt - a.updatedAt);
@@ -57,6 +64,7 @@ export const templates = {
 
 // Sobe a imagem de fundo e devolve a URL publica.
 export async function putUpload(file) {
+  requireToken();
   const ext = (file.originalname.match(/\.[^.]+$/) || ['.png'])[0];
   const { url } = await put(`uploads/${nanoid(10)}${ext}`, file.buffer, {
     access: 'public',
