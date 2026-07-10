@@ -101,7 +101,8 @@ function normalizeData(body) {
     width: Number(body.width) || 1000,
     height: Number(body.height) || 705,
     background: body.background || null,
-    format: pickFormat(body.format),
+    // formato PADRAO da URL /i/ (email/exibicao) e sempre imagem; PDF so via ?_format=pdf
+    format: body.format === 'jpeg' ? 'jpeg' : 'png',
     elements: Array.isArray(body.elements) ? body.elements : [],
   };
 }
@@ -145,7 +146,9 @@ app.get('/i/:id', wrap(async (req, res) => {
   const tpl = await templates.get(req.params.id);
   if (!tpl) return res.status(404).send('not found');
   const { _format, _dl, ...values } = req.query;
-  const format = pickFormat(_format || tpl.format);
+  // padrao do template e sempre imagem (PDF so quando pedido via ?_format=pdf)
+  const def = tpl.format === 'jpeg' ? 'jpeg' : 'png';
+  const format = pickFormat(_format || def);
   try {
     const { buffer, contentType } = await renderImage(tpl, values, format);
     res.set('Content-Type', contentType);

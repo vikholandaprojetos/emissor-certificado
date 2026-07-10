@@ -7,8 +7,9 @@ function esc(s) {
 export function viewPage(id, qs, name) {
   const q = qs ? '?' + qs : '';
   const sep = qs ? '&' : '?';
-  const imgUrl = `/i/${id}${q}`;
-  const dlUrl = `/i/${id}${q}${sep}_dl=1`;
+  // Sempre PNG para EXIBIR (um <img> nao renderiza PDF, so imagem).
+  const imgUrl = `/i/${id}${q}${sep}_format=png`;
+  const dlUrl = `/i/${id}${q}${sep}_format=png&_dl=1`;
   const pdfUrl = `/i/${id}${q}${sep}_format=pdf&_dl=1`;
   return `<!doctype html>
 <html lang="pt-br">
