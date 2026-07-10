@@ -145,10 +145,18 @@ app.post('/api/uploads', upload.single('file'), wrap(async (req, res) => {
 app.get('/i/:id', wrap(async (req, res) => {
   const tpl = await templates.get(req.params.id);
   if (!tpl) return res.status(404).send('not found');
-  const { _format, _dl, ...values } = req.query;
-  // padrao do template e sempre imagem (PDF so quando pedido via ?_format=pdf)
+  const { _format, _dl, formato, ...values } = req.query;
+
+  // Parametro amigavel: ?formato=imagem|png|jpg|pdf|pagina  (mesma URL, saidas diferentes)
+  const fmt = String(formato || _format || '').toLowerCase();
+  if (fmt === 'pagina' || fmt === 'page') {
+    const qs = new URLSearchParams(values).toString();
+    return res.type('html').send(viewPage(req.params.id, qs, tpl.name));
+  }
+  const alias = { imagem: 'png', jpg: 'jpeg' };
+  // padrao do template e sempre imagem (PDF so quando pedido)
   const def = tpl.format === 'jpeg' ? 'jpeg' : 'png';
-  const format = pickFormat(_format || def);
+  const format = pickFormat(alias[fmt] || fmt || def);
   try {
     const { buffer, contentType } = await renderImage(tpl, values, format);
     res.set('Content-Type', contentType);
