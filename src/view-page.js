@@ -6,8 +6,10 @@ function esc(s) {
 
 export function viewPage(id, qs, name) {
   const q = qs ? '?' + qs : '';
+  const sep = qs ? '&' : '?';
   const imgUrl = `/i/${id}${q}`;
-  const dlUrl = `/i/${id}${q}${qs ? '&' : '?'}_dl=1`;
+  const dlUrl = `/i/${id}${q}${sep}_dl=1`;
+  const pdfUrl = `/i/${id}${q}${sep}_format=pdf&_dl=1`;
   return `<!doctype html>
 <html lang="pt-br">
 <head>
@@ -37,13 +39,19 @@ export function viewPage(id, qs, name) {
       transition: transform .12s ease, box-shadow .12s ease;
     }
     .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(232,200,119,.28); }
+    .btn.ghost { background: transparent; color: #e8c877; border: 1px solid rgba(232,200,119,.5); }
+    .btn.ghost:hover { box-shadow: none; background: rgba(232,200,119,.08); }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
     .hint { color: #8b93a1; font-size: 13px; }
   </style>
 </head>
 <body>
   <h1>${esc(name || 'Seu certificado')}</h1>
   <div class="frame"><img src="${esc(imgUrl)}" alt="${esc(name || 'certificado')}"></div>
-  <a class="btn" href="${esc(dlUrl)}" download>⬇ Baixar imagem</a>
+  <div class="actions">
+    <a class="btn" href="${esc(dlUrl)}" download>⬇ Baixar imagem</a>
+    <a class="btn ghost" href="${esc(pdfUrl)}" download>⬇ Baixar PDF</a>
+  </div>
   <div class="hint">Clique para salvar em alta resolução.</div>
 </body>
 </html>`;

@@ -372,15 +372,17 @@ function genViewUrl() {
 
 $('#btn-copy').onclick = () => navigator.clipboard.writeText(genUrl());
 $('#btn-open').onclick = () => window.open(genUrl(), '_blank');
-$('#btn-download').onclick = () => {
+function download(extraParams) {
   const url = genUrl();
   const a = document.createElement('a');
-  a.href = url + (url.includes('?') ? '&' : '?') + '_dl=1';
+  a.href = url + (url.includes('?') ? '&' : '?') + extraParams;
   a.download = '';
   document.body.appendChild(a);
   a.click();
   a.remove();
-};
+}
+$('#btn-download').onclick = () => download('_dl=1');
+$('#btn-pdf').onclick = () => download('_format=pdf&_dl=1');
 $('#btn-copy-view').onclick = () => navigator.clipboard.writeText(genViewUrl());
 $('#btn-open-view').onclick = () => window.open(genViewUrl(), '_blank');
 

@@ -93,8 +93,9 @@ app.use('/api', (req, res, next) => {
 });
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
-const ALLOWED_FORMATS = ['png', 'jpeg'];
+const ALLOWED_FORMATS = ['png', 'jpeg', 'pdf'];
 const pickFormat = (f) => (ALLOWED_FORMATS.includes(f) ? f : 'png');
+const EXT = { png: 'png', jpeg: 'jpg', pdf: 'pdf' };
 function normalizeData(body) {
   return {
     width: Number(body.width) || 1000,
@@ -149,10 +150,10 @@ app.get('/i/:id', wrap(async (req, res) => {
     const { buffer, contentType } = await renderImage(tpl, values, format);
     res.set('Content-Type', contentType);
     res.set('Cache-Control', 'public, max-age=86400, s-maxage=86400');
-    if (_dl) {
-      const ext = format === 'jpeg' ? 'jpg' : 'png';
+    if (_dl || format === 'pdf') {
       const safe = (tpl.name || 'imagem').replace(/[^\w.-]+/g, '_');
-      res.set('Content-Disposition', `attachment; filename="${safe}.${ext}"`);
+      const disp = _dl ? 'attachment' : 'inline';
+      res.set('Content-Disposition', `${disp}; filename="${safe}.${EXT[format]}"`);
     }
     res.send(buffer);
   } catch (err) {

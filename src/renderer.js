@@ -2,10 +2,20 @@
 // Funciona em serverless (Vercel) sem Chromium.
 import satori from 'satori';
 import sharp from 'sharp';
+import { PDFDocument } from 'pdf-lib';
 import { loadFonts } from './fonts-loader.js';
 import { DEVICE_SCALE } from './config.js';
 
-const CONTENT_TYPE = { png: 'image/png', jpeg: 'image/jpeg' };
+const CONTENT_TYPE = { png: 'image/png', jpeg: 'image/jpeg', pdf: 'application/pdf' };
+
+// Embute a imagem PNG num PDF de 1 pagina do tamanho exato do template.
+async function toPdf(pngBuffer, width, height) {
+  const pdf = await PDFDocument.create();
+  const page = pdf.addPage([width, height]);
+  const img = await pdf.embedPng(pngBuffer);
+  page.drawImage(img, { x: 0, y: 0, width, height });
+  return Buffer.from(await pdf.save());
+}
 
 // Converte a URL do fundo (Blob) para data URI, pois o Satori precisa dos bytes.
 async function toDataUri(url) {
@@ -71,10 +81,9 @@ function buildTree(tpl, values, bgDataUri) {
   };
 }
 
-// Renderiza no formato pedido (png|jpeg). Retorna { buffer, contentType }.
+// Renderiza no formato pedido (png|jpeg|pdf). Retorna { buffer, contentType }.
 export async function renderImage(tpl, values, format = 'png') {
   format = CONTENT_TYPE[format] ? format : 'png';
-  const contentType = CONTENT_TYPE[format];
 
   const [fonts, bgDataUri] = await Promise.all([
     loadFonts(tpl.elements || []),
@@ -89,11 +98,15 @@ export async function renderImage(tpl, values, format = 'png') {
 
   const density = 72 * (DEVICE_SCALE || 2); // nitidez (retina)
   const img = sharp(Buffer.from(svg), { density });
-  const buffer = format === 'jpeg'
-    ? await img.jpeg({ quality: 90 }).toBuffer()
-    : await img.png().toBuffer();
 
-  return { buffer, contentType };
+  if (format === 'jpeg') {
+    return { buffer: await img.jpeg({ quality: 90 }).toBuffer(), contentType: CONTENT_TYPE.jpeg };
+  }
+  const png = await img.png().toBuffer();
+  if (format === 'pdf') {
+    return { buffer: await toPdf(png, tpl.width, tpl.height), contentType: CONTENT_TYPE.pdf };
+  }
+  return { buffer: png, contentType: CONTENT_TYPE.png };
 }
 
 // compat: nao ha mais navegador para fechar
