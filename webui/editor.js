@@ -352,8 +352,7 @@ function renderUrlPanel() {
     label.appendChild(inp);
     form.appendChild(label);
   }
-  $('#gen-url').textContent = genUrl();
-  $('#view-url').textContent = genViewUrl();
+  renderShortcuts();
 }
 
 function queryString() {
@@ -361,30 +360,44 @@ function queryString() {
     .map((p) => `${encodeURIComponent(p)}=${encodeURIComponent(state.testValues[p] || 'valor')}`)
     .join('&');
 }
-function genUrl() {
-  const qs = queryString();
-  return location.origin + '/i/' + state.tpl.id + (qs ? `?${qs}` : '');
-}
-function genViewUrl() {
-  const qs = queryString();
-  return location.origin + '/view/' + state.tpl.id + (qs ? `?${qs}` : '');
-}
 
-$('#btn-copy').onclick = () => navigator.clipboard.writeText(genUrl());
-$('#btn-open').onclick = () => window.open(genUrl(), '_blank');
-function download(extraParams) {
-  const url = genUrl();
-  const a = document.createElement('a');
-  a.href = url + (url.includes('?') ? '&' : '?') + extraParams;
-  a.download = '';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+function renderShortcuts() {
+  const qs = queryString();
+  const q = qs ? '?' + qs : '';
+  const s = qs ? '&' : '?';
+  const id = state.tpl.id, o = location.origin;
+  const items = [
+    { label: 'Embedar imagem (PNG) — use no <img> do e-mail', url: `${o}/i/${id}${q}` },
+    { label: 'Imagem JPG', url: `${o}/i/${id}${q}${s}formato=jpg` },
+    { label: 'PDF (baixar)', url: `${o}/i/${id}${q}${s}formato=pdf&_dl=1` },
+    { label: 'Página pública (mostra imagem + botões)', url: `${o}/view/${id}${q}` },
+  ];
+  const box = $('#shortcuts');
+  box.innerHTML = '';
+  for (const it of items) {
+    const row = document.createElement('div');
+    row.className = 'shortcut';
+    const lab = document.createElement('div');
+    lab.className = 'sc-label';
+    lab.textContent = it.label;
+    const code = document.createElement('code');
+    code.className = 'sc-url';
+    code.textContent = it.url;
+    const acts = document.createElement('div');
+    acts.className = 'sc-acts';
+    const c = document.createElement('button');
+    c.className = 'btn small';
+    c.textContent = 'Copiar';
+    c.onclick = () => { navigator.clipboard.writeText(it.url); c.textContent = 'Copiado!'; setTimeout(() => (c.textContent = 'Copiar'), 1000); };
+    const ab = document.createElement('button');
+    ab.className = 'btn small';
+    ab.textContent = 'Abrir';
+    ab.onclick = () => window.open(it.url, '_blank');
+    acts.append(c, ab);
+    row.append(lab, code, acts);
+    box.appendChild(row);
+  }
 }
-$('#btn-download').onclick = () => download('_dl=1');
-$('#btn-pdf').onclick = () => download('_format=pdf&_dl=1');
-$('#btn-copy-view').onclick = () => navigator.clipboard.writeText(genViewUrl());
-$('#btn-open-view').onclick = () => window.open(genViewUrl(), '_blank');
 
 // ---------- salvar ----------
 $('#btn-save').onclick = async () => {

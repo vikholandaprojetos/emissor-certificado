@@ -4,12 +4,12 @@ function esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
-export function viewPage(id, qs, name) {
+export function viewPage(id, qs, name, imgFormat = 'png') {
+  const fmt = imgFormat === 'jpeg' ? 'jpeg' : 'png'; // <img> nunca renderiza PDF
   const q = qs ? '?' + qs : '';
   const sep = qs ? '&' : '?';
-  // Sempre PNG para EXIBIR (um <img> nao renderiza PDF, so imagem).
-  const imgUrl = `/i/${id}${q}${sep}_format=png`;
-  const dlUrl = `/i/${id}${q}${sep}_format=png&_dl=1`;
+  const imgUrl = `/i/${id}${q}${sep}_format=${fmt}`;
+  const dlUrl = `/i/${id}${q}${sep}_format=${fmt}&_dl=1`;
   const pdfUrl = `/i/${id}${q}${sep}_format=pdf&_dl=1`;
   return `<!doctype html>
 <html lang="pt-br">

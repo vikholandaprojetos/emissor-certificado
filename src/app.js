@@ -54,8 +54,10 @@ app.get('/', (_req, res) => res.type('html').send(LANDING_HTML));
 app.get('/view/:id', wrap(async (req, res) => {
   const tpl = await templates.get(req.params.id);
   if (!tpl) return res.status(404).send('not found');
-  const qs = new URLSearchParams(req.query).toString();
-  res.type('html').send(viewPage(req.params.id, qs, tpl.name));
+  const { formato, ...values } = req.query;
+  const imgFmt = (formato === 'jpg' || formato === 'jpeg') ? 'jpeg' : 'png';
+  const qs = new URLSearchParams(values).toString();
+  res.type('html').send(viewPage(req.params.id, qs, tpl.name, imgFmt));
 }));
 
 // ---- Login / logout ----
