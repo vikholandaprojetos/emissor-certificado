@@ -11,6 +11,8 @@ const state = {
   zoom: 1,
   testValues: {},   // valores de teste dos parametros
   fonts: FONTS_FALLBACK,
+  search: '',
+  collapsed: new Set(), // pastas recolhidas
 };
 
 // ---------- API ----------
@@ -49,27 +51,77 @@ function elText(el) {
   return el.content || '';
 }
 
-// ---------- lista de templates ----------
+// ---------- lista de templates (busca + agrupamento por pasta) ----------
 async function loadList() {
   state.list = await api.get('/api/templates');
+  renderList();
+}
+
+function renderList() {
   const ul = $('#tpl-list');
   ul.innerHTML = '';
-  for (const t of state.list) {
-    const li = document.createElement('li');
-    li.className = state.tpl && state.tpl.id === t.id ? 'active' : '';
-    const span = document.createElement('span');
-    span.textContent = t.name;
-    span.style.flex = '1';
-    span.onclick = () => openTemplate(t.id);
-    const del = document.createElement('button');
-    del.className = 'li-del';
-    del.textContent = '×';
-    del.title = 'Excluir';
-    del.onclick = (e) => { e.stopPropagation(); deleteTemplate(t.id, t.name); };
-    li.append(span, del);
-    ul.appendChild(li);
+  const term = (state.search || '').toLowerCase();
+  let items = state.list;
+  if (term) {
+    items = items.filter((t) =>
+      t.name.toLowerCase().includes(term) || (t.folder || '').toLowerCase().includes(term));
+  }
+  // agrupa por pasta
+  const groups = new Map();
+  for (const t of items) {
+    const f = t.folder || '';
+    if (!groups.has(f)) groups.set(f, []);
+    groups.get(f).push(t);
+  }
+  const names = [...groups.keys()].sort((a, b) =>
+    a === '' ? 1 : b === '' ? -1 : a.localeCompare(b));
+  const showHeaders = names.length > 1 || (names.length === 1 && names[0] !== '');
+
+  for (const f of names) {
+    if (showHeaders) {
+      const collapsed = !term && state.collapsed.has(f);
+      const h = document.createElement('li');
+      h.className = 'folder-header';
+      h.innerHTML =
+        `<span class="fh-caret">${collapsed ? '▸' : '▾'}</span>` +
+        `<span class="fh-name">${esc(f || '📂 Sem pasta')}</span>` +
+        `<span class="fh-count">${groups.get(f).length}</span>`;
+      h.onclick = () => {
+        if (state.collapsed.has(f)) state.collapsed.delete(f); else state.collapsed.add(f);
+        renderList();
+      };
+      ul.appendChild(h);
+      if (collapsed) continue;
+    }
+    for (const t of groups.get(f)) {
+      const li = document.createElement('li');
+      li.className = 'tpl-item' + (state.tpl && state.tpl.id === t.id ? ' active' : '');
+      if (showHeaders) li.classList.add('in-folder');
+      const span = document.createElement('span');
+      span.textContent = t.name;
+      span.style.flex = '1';
+      span.onclick = () => openTemplate(t.id);
+      const del = document.createElement('button');
+      del.className = 'li-del';
+      del.textContent = '×';
+      del.title = 'Excluir';
+      del.onclick = (e) => { e.stopPropagation(); deleteTemplate(t.id, t.name); };
+      li.append(span, del);
+      ul.appendChild(li);
+    }
+  }
+  if (!items.length) {
+    const empty = document.createElement('li');
+    empty.className = 'list-empty';
+    empty.textContent = term ? 'Nada encontrado.' : 'Nenhum link ainda.';
+    ul.appendChild(empty);
   }
 }
+
+$('#tpl-search').addEventListener('input', (e) => {
+  state.search = e.target.value;
+  renderList();
+});
 
 async function deleteTemplate(id, name) {
   if (!confirm(`Excluir "${name}"?\nEssa acao nao pode ser desfeita.`)) return;
@@ -91,6 +143,7 @@ async function openTemplate(id) {
   state.testValues = {};
   enableUI(true);
   $('#tpl-name').value = state.tpl.name;
+  $('#tpl-folder').value = state.tpl.folder || '';
   $('#tpl-format').value = state.tpl.format || 'png';
   await loadList();
   renderStage();
@@ -403,6 +456,7 @@ function renderShortcuts() {
 $('#btn-save').onclick = async () => {
   const payload = {
     name: $('#tpl-name').value || 'Sem nome',
+    folder: $('#tpl-folder').value || '',
     width: state.tpl.width, height: state.tpl.height,
     background: state.tpl.background, format: $('#tpl-format').value,
     elements: state.tpl.elements,
@@ -410,6 +464,7 @@ $('#btn-save').onclick = async () => {
   await api.json('PUT', '/api/templates/' + state.tpl.id, payload);
   state.tpl.format = payload.format;
   state.tpl.name = payload.name;
+  state.tpl.folder = payload.folder;
   await loadList();
   flash('Salvo!');
 };
@@ -424,6 +479,7 @@ function flash(msg) {
 // ---------- UI enable ----------
 function enableUI(on) {
   $('#tpl-name').disabled = !on;
+  $('#tpl-folder').disabled = !on;
   $('#tpl-format').disabled = !on;
   $('#btn-save').disabled = !on;
   $('#btn-add-text').disabled = !on;

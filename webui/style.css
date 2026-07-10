@@ -120,6 +120,20 @@ body.dragging .stage .el { cursor: grabbing; }
 .tpl-list li:hover { background: var(--panel2); }
 .tpl-list li.active { background: var(--panel2); border: 1px solid var(--accent); }
 .tpl-list li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.search-input { width: 100%; margin: 10px 0 4px; }
+
+.tpl-list li.folder-header {
+  text-transform: uppercase; font-size: 11px; letter-spacing: .5px;
+  color: var(--muted); padding: 8px 6px; user-select: none;
+}
+.tpl-list li.folder-header:hover { color: var(--text); background: transparent; }
+.fh-caret { width: 12px; flex: 0 0 auto; }
+.fh-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fh-count { flex: 0 0 auto; background: var(--panel2); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
+.tpl-list li.in-folder { margin-left: 12px; }
+.list-empty { color: var(--muted); font-size: 13px; padding: 10px; justify-content: flex-start; cursor: default; }
+.list-empty:hover { background: transparent; }
 .li-del {
   background: transparent;
   border: none;

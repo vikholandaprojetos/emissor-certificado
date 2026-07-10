@@ -14,6 +14,7 @@
     <div class="brand">🖼️ Gerador de Imagens</div>
     <div class="topbar-actions">
       <input id="tpl-name" class="name-input" placeholder="Nome do template" disabled>
+      <input id="tpl-folder" class="name-input" placeholder="Pasta (opcional)" disabled>
       <select id="tpl-format" class="select" disabled title="Formato padrao da URL">
         <option value="png">PNG</option>
         <option value="jpeg">JPEG</option>
@@ -27,6 +28,7 @@
     <!-- Coluna esquerda: lista de templates -->
     <aside class="sidebar-left">
       <button id="btn-new" class="btn block">+ Nova imagem</button>
+      <input id="tpl-search" class="search-input" placeholder="🔍 Buscar..." autocomplete="off">
       <div class="section-title">Meus links</div>
       <ul id="tpl-list" class="tpl-list"></ul>
     </aside>

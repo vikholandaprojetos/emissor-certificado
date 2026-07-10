@@ -105,6 +105,7 @@ function normalizeData(body) {
     background: body.background || null,
     // formato PADRAO da URL /i/ (email/exibicao) e sempre imagem; PDF so via ?_format=pdf
     format: body.format === 'jpeg' ? 'jpeg' : 'png',
+    folder: (body.folder || '').trim(),
     elements: Array.isArray(body.elements) ? body.elements : [],
   };
 }
@@ -113,7 +114,7 @@ app.get('/api/fonts', (_req, res) => res.json(FONTS));
 
 app.get('/api/templates', wrap(async (_req, res) => {
   const list = await templates.list();
-  res.json(list.map((t) => ({ id: t.id, name: t.name, updatedAt: t.updatedAt })));
+  res.json(list.map((t) => ({ id: t.id, name: t.name, folder: t.folder || '', updatedAt: t.updatedAt })));
 }));
 app.get('/api/templates/:id', wrap(async (req, res) => {
   const tpl = await templates.get(req.params.id);
