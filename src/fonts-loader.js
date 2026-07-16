@@ -15,17 +15,25 @@ const PKG = {
   'Dancing Script': 'dancing-script',
 };
 
+import { FALLBACK_FONTS } from './fallback-fonts.js';
+
 const cache = new Map();
 
 async function fetchWoff(pkg, weight, style) {
   const key = `${pkg}-${weight}-${style}`;
   if (cache.has(key)) return cache.get(key);
   const url = `https://cdn.jsdelivr.net/npm/@fontsource/${pkg}@5/files/${pkg}-latin-${weight}-${style}.woff`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`font ${key}: HTTP ${res.status}`);
-  const data = await res.arrayBuffer();
-  cache.set(key, data);
-  return data;
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.arrayBuffer();
+      cache.set(key, data);
+      return data;
+    } catch (e) { lastErr = e; }
+  }
+  throw new Error(`font ${key}: ${lastErr?.message || 'falhou'}`);
 }
 
 // Tenta o peso/estilo pedido; cai para 400 normal do mesmo pacote se faltar.
@@ -47,13 +55,17 @@ export async function loadFonts(elements) {
     const style = el.fontStyle === 'italic' ? 'italic' : 'normal';
     wanted.set(`${family}|${weight}|${style}`, { family, weight, style });
   }
-  // fallback garantido: Satori precisa de pelo menos uma fonte
-  wanted.set('Montserrat|400|normal', { family: 'Montserrat', weight: 400, style: 'normal' });
-
   const fonts = [];
+  const have = new Set();
   for (const { family, weight, style } of wanted.values()) {
     const data = await loadOne(family, weight, style);
-    if (data) fonts.push({ name: family, data, weight, style });
+    if (data) { fonts.push({ name: family, data, weight, style }); have.add(`${family}|${weight}|${style}`); }
+  }
+  // Fallback SEMPRE presente (embutido): garante que o texto renderiza mesmo
+  // se o CDN de fontes falhar. Satori usa como fallback para familias ausentes.
+  for (const f of FALLBACK_FONTS) {
+    if (have.has(`${f.name}|${f.weight}|${f.style}`)) continue;
+    fonts.push({ name: f.name, weight: f.weight, style: f.style, data: Buffer.from(f.data) });
   }
   return fonts;
 }
