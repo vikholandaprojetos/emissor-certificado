@@ -163,7 +163,9 @@ app.get('/i/:id', wrap(async (req, res) => {
   try {
     const { buffer, contentType } = await renderImage(tpl, values, format);
     res.set('Content-Type', contentType);
-    res.set('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+    // cache curto no edge + serve "stale" enquanto revalida: troca de fundo
+    // aparece em ~1 min, mas o e-mail continua carregando rapido (servido do cache)
+    res.set('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=86400');
     if (_dl || format === 'pdf') {
       const safe = (tpl.name || 'imagem').replace(/[^\w.-]+/g, '_');
       const disp = _dl ? 'attachment' : 'inline';

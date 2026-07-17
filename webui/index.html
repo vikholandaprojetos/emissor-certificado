@@ -47,10 +47,12 @@
     <aside class="sidebar-right">
       <div class="panel">
         <button id="btn-add-text" class="btn block" disabled>+ Adicionar texto</button>
+        <button id="btn-swap-bg" class="btn block" disabled style="margin-top:8px">🖼️ Trocar fundo (mesmo link)</button>
       </div>
 
       <div id="props" class="panel props" hidden>
-        <div class="section-title">Propriedades</div>
+        <div class="panel-head">Propriedades</div>
+        <div class="panel-body">
         <label>Texto / valor padrao
           <textarea id="p-content" rows="2"></textarea>
         </label>
@@ -102,13 +104,17 @@
           <label class="chk"><input id="p-shadow" type="checkbox"> Sombra</label>
         </div>
         <button id="btn-del" class="btn danger block">Excluir elemento</button>
+        </div>
       </div>
 
       <div id="url-panel" class="panel" hidden>
-        <div class="section-title">Valores de teste</div>
-        <div class="params-form" id="params-form"></div>
-        <div class="section-title">Atalhos por formato</div>
-        <div id="shortcuts"></div>
+        <div class="panel-head">Compartilhar / URLs</div>
+        <div class="panel-body">
+          <div class="section-title">Valores de teste</div>
+          <div class="params-form" id="params-form"></div>
+          <div class="section-title">Atalhos por formato</div>
+          <div id="shortcuts"></div>
+        </div>
       </div>
     </aside>
   </main>

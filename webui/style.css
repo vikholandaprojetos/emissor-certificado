@@ -168,6 +168,27 @@ body.dragging .stage .el { cursor: grabbing; }
 }
 .row { display: flex; gap: 8px; }
 
+/* Paineis colapsaveis (lado direito) */
+.panel-head {
+  cursor: pointer; user-select: none;
+  display: flex; align-items: center; justify-content: space-between;
+  color: var(--text); font-size: 13px; font-weight: 600;
+}
+.panel-head::after { content: '▾'; color: var(--muted); transition: transform .15s ease; }
+.panel.collapsed .panel-head::after { transform: rotate(-90deg); }
+.panel.collapsed .panel-body { display: none; }
+.panel-body { margin-top: 12px; }
+
+/* Pasta na lista */
+.tpl-list li.folder-header {
+  text-transform: none; font-size: 12px; font-weight: 600; letter-spacing: 0;
+  color: var(--text); padding: 9px 6px; margin-top: 4px; user-select: none; gap: 8px;
+}
+.tpl-list li.folder-header:hover { color: #fff; background: var(--panel2); }
+.fh-caret { width: 12px; flex: 0 0 auto; color: var(--muted); }
+.fh-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fh-count { flex: 0 0 auto; background: var(--panel2); color: var(--muted); border-radius: 10px; padding: 1px 8px; font-size: 11px; font-weight: 400; }
+
 .shortcut { border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-bottom: 10px; background: #0b0d10; }
 .sc-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .sc-url { display: block; font-size: 11px; color: #9ecbff; word-break: break-all; margin-bottom: 8px; }

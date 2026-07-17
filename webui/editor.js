@@ -13,6 +13,7 @@ const state = {
   fonts: FONTS_FALLBACK,
   search: '',
   collapsed: new Set(), // pastas recolhidas
+  swapMode: false,      // trocando fundo do template atual
 };
 
 // ---------- API ----------
@@ -66,34 +67,36 @@ function renderList() {
     items = items.filter((t) =>
       t.name.toLowerCase().includes(term) || (t.folder || '').toLowerCase().includes(term));
   }
-  // agrupa por pasta
-  const groups = new Map();
+  // agrupa por pasta (case/espaco-insensitive p/ nao duplicar: "Murilo" == "MURILO")
+  const groups = new Map(); // key normalizada -> { display, items }
   for (const t of items) {
-    const f = t.folder || '';
-    if (!groups.has(f)) groups.set(f, []);
-    groups.get(f).push(t);
+    const raw = (t.folder || '').trim();
+    const key = raw.toLowerCase();
+    if (!groups.has(key)) groups.set(key, { display: raw, items: [] });
+    groups.get(key).items.push(t);
   }
-  const names = [...groups.keys()].sort((a, b) =>
+  const keys = [...groups.keys()].sort((a, b) =>
     a === '' ? 1 : b === '' ? -1 : a.localeCompare(b));
-  const showHeaders = names.length > 1 || (names.length === 1 && names[0] !== '');
+  const showHeaders = keys.length > 1 || (keys.length === 1 && keys[0] !== '');
 
-  for (const f of names) {
+  for (const key of keys) {
+    const grp = groups.get(key);
     if (showHeaders) {
-      const collapsed = !term && state.collapsed.has(f);
+      const collapsed = !term && state.collapsed.has(key);
       const h = document.createElement('li');
       h.className = 'folder-header';
       h.innerHTML =
         `<span class="fh-caret">${collapsed ? '▸' : '▾'}</span>` +
-        `<span class="fh-name">${esc(f || '📂 Sem pasta')}</span>` +
-        `<span class="fh-count">${groups.get(f).length}</span>`;
+        `<span class="fh-name">${esc(grp.display || '📂 Sem pasta')}</span>` +
+        `<span class="fh-count">${grp.items.length}</span>`;
       h.onclick = () => {
-        if (state.collapsed.has(f)) state.collapsed.delete(f); else state.collapsed.add(f);
+        if (state.collapsed.has(key)) state.collapsed.delete(key); else state.collapsed.add(key);
         renderList();
       };
       ul.appendChild(h);
       if (collapsed) continue;
     }
-    for (const t of groups.get(f)) {
+    for (const t of grp.items) {
       const li = document.createElement('li');
       li.className = 'tpl-item' + (state.tpl && state.tpl.id === t.id ? ' active' : '');
       if (showHeaders) li.classList.add('in-folder');
@@ -121,6 +124,12 @@ function renderList() {
 $('#tpl-search').addEventListener('input', (e) => {
   state.search = e.target.value;
   renderList();
+});
+
+// colapsar/expandir paineis do lado direito (clique no titulo)
+document.addEventListener('click', (e) => {
+  const head = e.target.closest('.panel-head');
+  if (head && head.parentElement) head.parentElement.classList.toggle('collapsed');
 });
 
 async function deleteTemplate(id, name) {
@@ -151,15 +160,29 @@ async function openTemplate(id) {
   renderUrlPanel();
 }
 
-// ---------- nova imagem (upload de fundo) ----------
-$('#btn-new').onclick = () => $('#file-input').click();
+// ---------- nova imagem / trocar fundo (upload) ----------
+$('#btn-new').onclick = () => { state.swapMode = false; $('#file-input').click(); };
+$('#btn-swap-bg').onclick = () => { state.swapMode = true; $('#file-input').click(); };
+
 $('#file-input').onchange = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  const dims = await readImageDims(file);
   const fd = new FormData();
   fd.append('file', file);
   const up = await fetch('/api/uploads', { method: 'POST', body: fd }).then((r) => r.json());
+
+  // TROCAR FUNDO: mantem o mesmo template (mesmo ID = mesmo link)
+  if (state.swapMode) {
+    state.swapMode = false;
+    state.tpl.background = up.url;
+    e.target.value = '';
+    renderStage();
+    flash('Fundo trocado — clique Salvar');
+    return;
+  }
+
+  // NOVA IMAGEM: cria template novo
+  const dims = await readImageDims(file);
   const tpl = await api.json('POST', '/api/templates', {
     name: file.name.replace(/\.[^.]+$/, ''),
     width: dims.w, height: dims.h,
@@ -483,6 +506,7 @@ function enableUI(on) {
   $('#tpl-format').disabled = !on;
   $('#btn-save').disabled = !on;
   $('#btn-add-text').disabled = !on;
+  $('#btn-swap-bg').disabled = !on;
   $('#stage-empty').hidden = on;
   $('#stage-wrap').hidden = !on;
 }
