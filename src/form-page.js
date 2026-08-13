@@ -73,6 +73,7 @@ export function formPage(id, tpl) {
 </div>
 <script>
 const ID = ${JSON.stringify(id)};
+const PARAMS = Object.fromEntries(new URLSearchParams(location.search));
 const st = { step: 1, email: '', name: '' };
 const app = document.getElementById('app');
 
@@ -173,7 +174,7 @@ function wire() {
     go.onclick = async () => {
       go.classList.add('spin'); go.textContent = 'Gerando...';
       try {
-        const r = await fetch('/f/' + ID + '/emit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: st.email, name: st.name }) });
+        const r = await fetch('/f/' + ID + '/emit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: st.email, name: st.name, params: { ...PARAMS, nome: st.name } }) });
         const d = await r.json();
         if (d.ok) { st.step = 4; render(); }
         else showErr('Não foi possível gerar. ' + (d.error === 'email' ? 'E-mail não autorizado.' : 'Tente novamente.'));

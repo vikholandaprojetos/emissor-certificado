@@ -139,22 +139,17 @@ $('#f-enabled').addEventListener('change', () => {
 });
 $('#f-emails').addEventListener('input', updateEmailCount);
 $('#btn-open-form').addEventListener('click', () => window.open(location.origin + '/f/' + state.tpl.id, '_blank'));
-$('#btn-subs').addEventListener('click', showSubmissions);
 
-async function showSubmissions() {
-  const box = $('#subs-box');
-  box.innerHTML = '<div class="hint">Carregando...</div>';
+$('#btn-test-wh').addEventListener('click', async () => {
+  const url = $('#wh-url').value.trim();
+  const res = $('#wh-test-res');
+  if (!url) { res.textContent = 'Preencha a URL do webhook.'; return; }
+  res.textContent = 'Enviando teste...';
   try {
-    const subs = await api.get('/api/templates/' + state.tpl.id + '/submissions');
-    if (!subs.length) { box.innerHTML = '<div class="hint">Nenhuma emissão ainda.</div>'; return; }
-    box.innerHTML = '<div class="subs-head">' + subs.length + ' emissão(ões)</div>' +
-      subs.map((s) => {
-        const d = new Date(s.at).toLocaleString('pt-BR');
-        return '<div class="sub-row"><b>' + esc(s.name) + '</b><span>' + esc(s.email) +
-          '</span><small>' + d + '</small></div>';
-      }).join('');
-  } catch { box.innerHTML = '<div class="hint">Erro ao carregar.</div>'; }
-}
+    const r = await api.json('POST', '/api/webhook-test', { url });
+    res.textContent = r.ok ? `✅ Enviado (HTTP ${r.status})` : `❌ Falhou${r.status ? ' (HTTP ' + r.status + ')' : ''}: ${r.error || ''}`;
+  } catch { res.textContent = '❌ Erro ao enviar o teste.'; }
+});
 
 async function deleteTemplate(id, name) {
   if (!confirm(`Excluir "${name}"?\nEssa acao nao pode ser desfeita.`)) return;
@@ -166,6 +161,7 @@ async function deleteTemplate(id, name) {
     $('#props').hidden = true;
     $('#url-panel').hidden = true;
     $('#form-panel').hidden = true;
+    $('#webhook-panel').hidden = true;
     $('#tpl-name').value = '';
   }
   await loadList();
@@ -192,7 +188,9 @@ function setupFormPanel() {
   $('#f-emails').value = (state.tpl.emails || []).join('\n');
   $('#f-config').hidden = !state.tpl.useForm;
   updateEmailCount();
-  $('#subs-box').innerHTML = '';
+  $('#webhook-panel').hidden = false;
+  $('#wh-url').value = state.tpl.webhookUrl || '';
+  $('#wh-test-res').textContent = '';
 }
 
 function updateEmailCount() {
@@ -528,6 +526,7 @@ $('#btn-save').onclick = async () => {
     background: state.tpl.background, format: $('#tpl-format').value,
     useForm: $('#f-enabled').checked,
     emails: $('#f-emails').value,
+    webhookUrl: $('#wh-url').value,
     elements: state.tpl.elements,
   };
   const saved = await api.json('PUT', '/api/templates/' + state.tpl.id, payload);
@@ -536,6 +535,7 @@ $('#btn-save').onclick = async () => {
   state.tpl.folder = payload.folder;
   state.tpl.useForm = saved.useForm;
   state.tpl.emails = saved.emails;
+  state.tpl.webhookUrl = saved.webhookUrl;
   $('#f-emails').value = (saved.emails || []).join('\n');
   updateEmailCount();
   await loadList();
@@ -559,7 +559,7 @@ function enableUI(on) {
   $('#btn-swap-bg').disabled = !on;
   $('#stage-empty').hidden = on;
   $('#stage-wrap').hidden = !on;
-  if (!on) $('#form-panel').hidden = true;
+  if (!on) { $('#form-panel').hidden = true; $('#webhook-panel').hidden = true; }
 }
 
 window.addEventListener('resize', () => { if (state.tpl) renderStage(); });

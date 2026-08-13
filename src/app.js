@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import crypto from 'node:crypto';
 import { nanoid } from 'nanoid';
-import { templates, putUpload, addSubmission, listSubmissions } from './store.js';
+import { templates, putUpload } from './store.js';
 import { renderImage } from './renderer.js';
 import { FONTS } from './fonts.js';
 import { LANDING_HTML } from './landing.js';
@@ -57,6 +57,11 @@ app.get('/view/:id', wrap(async (req, res) => {
   if (!tpl) return res.status(404).send('not found');
   const { formato, ...values } = req.query;
   const imgFmt = (formato === 'jpg' || formato === 'jpeg') ? 'jpeg' : 'png';
+  // certificados SEM formulario: a "emissao" e a abertura da pagina -> dispara webhook
+  if (tpl.webhookUrl && !tpl.useForm) {
+    const name = values.nome || values.name || Object.values(values)[0] || null;
+    fireWebhook(tpl, { name, email: null, params: values });
+  }
   const qs = new URLSearchParams(values).toString();
   res.type('html').send(viewPage(req.params.id, qs, tpl.name, imgFmt));
 }));
@@ -85,7 +90,8 @@ app.post('/f/:id/emit', wrap(async (req, res) => {
   const name = String(req.body?.name || '').trim();
   if (!(tpl.emails || []).includes(email)) return res.status(403).json({ ok: false, error: 'email' });
   if (name.length < 2) return res.status(400).json({ ok: false, error: 'name' });
-  await addSubmission(req.params.id, { email, name });
+  const params = (req.body && typeof req.body.params === 'object' && req.body.params) || {};
+  fireWebhook(tpl, { name, email, params });
   res.json({ ok: true, name });
 }));
 
@@ -144,8 +150,39 @@ function normalizeData(body) {
     folder: (body.folder || '').trim(),
     useForm: !!body.useForm,
     emails: parseEmails(body.emails),
+    webhookUrl: (body.webhookUrl || '').trim(),
     elements: Array.isArray(body.elements) ? body.elements : [],
   };
+}
+
+// POST no webhook (com timeout). Retorna { ok, status }.
+async function postWebhook(url, payload) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: ctrl.signal,
+    });
+    return { ok: r.ok, status: r.status };
+  } finally { clearTimeout(t); }
+}
+
+// Dispara o webhook do template na emissao (fire-and-forget, nao trava a resposta).
+function fireWebhook(tpl, data) {
+  const url = (tpl.webhookUrl || '').trim();
+  if (!url) return;
+  const payload = {
+    certificate: tpl.name,
+    templateId: tpl.id,
+    emittedAt: new Date().toISOString(),
+    name: data.name || null,
+    email: data.email || null,
+    params: data.params || {},
+  };
+  postWebhook(url, payload).catch((e) => console.error('webhook error:', e?.message));
 }
 
 app.get('/api/fonts', (_req, res) => res.json(FONTS));
@@ -177,8 +214,19 @@ app.delete('/api/templates/:id', wrap(async (req, res) => {
   res.status(204).end();
 }));
 
-app.get('/api/templates/:id/submissions', wrap(async (req, res) => {
-  res.json(await listSubmissions(req.params.id));
+// Testa o webhook a partir da URL informada (nao precisa estar salva ainda)
+app.post('/api/webhook-test', wrap(async (req, res) => {
+  const url = String(req.body?.url || '').trim();
+  if (!/^https?:\/\//.test(url)) return res.status(400).json({ ok: false, error: 'URL invalida' });
+  try {
+    const r = await postWebhook(url, {
+      certificate: 'Teste', templateId: 'teste', emittedAt: new Date().toISOString(),
+      name: 'Fulano de Teste', email: 'teste@exemplo.com', params: { nome: 'Fulano de Teste' }, test: true,
+    });
+    res.json({ ok: r.ok, status: r.status });
+  } catch (e) {
+    res.json({ ok: false, error: e?.message || 'falhou' });
+  }
 }));
 app.post('/api/uploads', upload.single('file'), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'no file' });

@@ -118,10 +118,22 @@
             <div id="f-count" class="hint"></div>
             <div class="row" style="margin-top:8px">
               <button id="btn-open-form" class="btn small" type="button">Abrir formulário</button>
-              <button id="btn-subs" class="btn small" type="button">Ver emissões</button>
             </div>
-            <div id="subs-box"></div>
           </div>
+        </div>
+      </div>
+
+      <div id="webhook-panel" class="panel" hidden>
+        <div class="panel-head">Webhook (disparo na emissão)</div>
+        <div class="panel-body">
+          <label>URL do webhook (vazio = desativado)
+            <input id="wh-url" type="url" placeholder="https://seu-sistema.com/webhook">
+          </label>
+          <div class="hint">A cada emissão envia POST (JSON) com: nome do certificado, data/hora, nome, parâmetros e e-mail (se houver). Nada é salvo na plataforma.</div>
+          <div class="row" style="margin-top:8px">
+            <button id="btn-test-wh" class="btn small" type="button">Enviar teste</button>
+          </div>
+          <div id="wh-test-res" class="hint"></div>
         </div>
       </div>
 

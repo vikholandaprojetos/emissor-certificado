@@ -75,23 +75,6 @@ export const templates = {
   },
 };
 
-// ---- Envios do formulario (email + nome + data) por template ----
-export async function addSubmission(templateId, sub) {
-  const rec = { id: nanoid(10), email: sub.email, name: sub.name, at: Date.now() };
-  if (LOCAL) { const db = ldb(); (db.submissions[templateId] ||= []).push(rec); lsave(db); return rec; }
-  await put(`submissions/${templateId}/${rec.id}.json`, JSON.stringify(rec), {
-    access: 'public', contentType: 'application/json', addRandomSuffix: false,
-  });
-  return rec;
-}
-
-export async function listSubmissions(templateId) {
-  if (LOCAL) return (ldb().submissions[templateId] || []).slice().sort((a, b) => b.at - a.at);
-  const { blobs } = await list({ prefix: `submissions/${templateId}/` });
-  const arr = await Promise.all(blobs.map((b) => readJson(b.url).catch(() => null)));
-  return arr.filter(Boolean).sort((a, b) => b.at - a.at);
-}
-
 // Sobe a imagem de fundo. LOCAL: data URI (isolado). PROD: Vercel Blob (URL publica).
 export async function putUpload(file) {
   if (LOCAL) return `data:${file.mimetype || 'image/png'};base64,${file.buffer.toString('base64')}`;
