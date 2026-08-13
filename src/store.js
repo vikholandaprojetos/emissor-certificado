@@ -22,14 +22,18 @@ function lsave(db) {
 }
 
 // ---- helpers BLOB ----
+// cache-buster: o template e sobrescrito, entao a URL fixa pode vir do CDN em cache.
 async function readJson(url) {
-  const r = await fetch(url, { cache: 'no-store' });
+  const u = url + (url.includes('?') ? '&' : '?') + '_=' + Date.now();
+  const r = await fetch(u, { cache: 'no-store' });
   if (!r.ok) throw new Error('blob fetch ' + r.status);
   return r.json();
 }
 function putJson(pathname, obj) {
   return put(pathname, JSON.stringify(obj), {
-    access: 'public', contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true,
+    access: 'public', contentType: 'application/json',
+    addRandomSuffix: false, allowOverwrite: true,
+    cacheControlMaxAge: 0, // template muda -> nao pode cachear no CDN
   });
 }
 
@@ -84,9 +88,7 @@ export async function addSubmission(templateId, sub) {
 export async function listSubmissions(templateId) {
   if (LOCAL) return (ldb().submissions[templateId] || []).slice().sort((a, b) => b.at - a.at);
   const { blobs } = await list({ prefix: `submissions/${templateId}/` });
-  const arr = await Promise.all(
-    blobs.map((b) => fetch(b.url, { cache: 'no-store' }).then((r) => r.json()).catch(() => null))
-  );
+  const arr = await Promise.all(blobs.map((b) => readJson(b.url).catch(() => null)));
   return arr.filter(Boolean).sort((a, b) => b.at - a.at);
 }
 
