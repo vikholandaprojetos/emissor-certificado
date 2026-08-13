@@ -2,12 +2,13 @@ import express from 'express';
 import multer from 'multer';
 import crypto from 'node:crypto';
 import { nanoid } from 'nanoid';
-import { templates, putUpload } from './store.js';
+import { templates, putUpload, addSubmission, listSubmissions } from './store.js';
 import { renderImage } from './renderer.js';
 import { FONTS } from './fonts.js';
 import { LANDING_HTML } from './landing.js';
 import { loginPage } from './login-page.js';
 import { viewPage } from './view-page.js';
+import { formPage } from './form-page.js';
 import { ASSETS } from './webui-assets.js';
 
 const app = express();
@@ -60,6 +61,34 @@ app.get('/view/:id', wrap(async (req, res) => {
   res.type('html').send(viewPage(req.params.id, qs, tpl.name, imgFmt));
 }));
 
+// ---- Formulario publico de emissao em 3 etapas: /f/:id ----
+const normEmail = (e) => String(e || '').trim().toLowerCase();
+
+app.get('/f/:id', wrap(async (req, res) => {
+  const tpl = await templates.get(req.params.id);
+  if (!tpl) return res.status(404).send('not found');
+  if (!tpl.useForm) return res.redirect('/view/' + req.params.id); // sem formulario -> pagina normal
+  res.type('html').send(formPage(req.params.id, tpl));
+}));
+
+app.post('/f/:id/check', wrap(async (req, res) => {
+  const tpl = await templates.get(req.params.id);
+  if (!tpl || !tpl.useForm) return res.status(404).json({ ok: false });
+  const ok = (tpl.emails || []).includes(normEmail(req.body?.email));
+  res.json({ ok });
+}));
+
+app.post('/f/:id/emit', wrap(async (req, res) => {
+  const tpl = await templates.get(req.params.id);
+  if (!tpl || !tpl.useForm) return res.status(404).json({ ok: false });
+  const email = normEmail(req.body?.email);
+  const name = String(req.body?.name || '').trim();
+  if (!(tpl.emails || []).includes(email)) return res.status(403).json({ ok: false, error: 'email' });
+  if (name.length < 2) return res.status(400).json({ ok: false, error: 'name' });
+  await addSubmission(req.params.id, { email, name });
+  res.json({ ok: true, name });
+}));
+
 // ---- Login / logout ----
 app.get('/admin/login', (req, res) => {
   if (isAuthed(req)) return res.redirect('/admin/');
@@ -98,6 +127,13 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 *
 const ALLOWED_FORMATS = ['png', 'jpeg', 'pdf'];
 const pickFormat = (f) => (ALLOWED_FORMATS.includes(f) ? f : 'png');
 const EXT = { png: 'png', jpeg: 'jpg', pdf: 'pdf' };
+function parseEmails(input) {
+  if (Array.isArray(input)) input = input.join('\n');
+  return [...new Set(
+    String(input || '').split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter((e) => e.includes('@'))
+  )];
+}
+
 function normalizeData(body) {
   return {
     width: Number(body.width) || 1000,
@@ -106,6 +142,8 @@ function normalizeData(body) {
     // formato PADRAO da URL /i/ (email/exibicao) e sempre imagem; PDF so via ?_format=pdf
     format: body.format === 'jpeg' ? 'jpeg' : 'png',
     folder: (body.folder || '').trim(),
+    useForm: !!body.useForm,
+    emails: parseEmails(body.emails),
     elements: Array.isArray(body.elements) ? body.elements : [],
   };
 }
@@ -137,6 +175,10 @@ app.put('/api/templates/:id', wrap(async (req, res) => {
 app.delete('/api/templates/:id', wrap(async (req, res) => {
   await templates.remove(req.params.id);
   res.status(204).end();
+}));
+
+app.get('/api/templates/:id/submissions', wrap(async (req, res) => {
+  res.json(await listSubmissions(req.params.id));
 }));
 app.post('/api/uploads', upload.single('file'), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'no file' });

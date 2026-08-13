@@ -132,6 +132,30 @@ document.addEventListener('click', (e) => {
   if (head && head.parentElement) head.parentElement.classList.toggle('collapsed');
 });
 
+// ---------- formulario de emissao ----------
+$('#f-enabled').addEventListener('change', () => {
+  $('#f-config').hidden = !$('#f-enabled').checked;
+  renderUrlPanel();
+});
+$('#f-emails').addEventListener('input', updateEmailCount);
+$('#btn-open-form').addEventListener('click', () => window.open(location.origin + '/f/' + state.tpl.id, '_blank'));
+$('#btn-subs').addEventListener('click', showSubmissions);
+
+async function showSubmissions() {
+  const box = $('#subs-box');
+  box.innerHTML = '<div class="hint">Carregando...</div>';
+  try {
+    const subs = await api.get('/api/templates/' + state.tpl.id + '/submissions');
+    if (!subs.length) { box.innerHTML = '<div class="hint">Nenhuma emissão ainda.</div>'; return; }
+    box.innerHTML = '<div class="subs-head">' + subs.length + ' emissão(ões)</div>' +
+      subs.map((s) => {
+        const d = new Date(s.at).toLocaleString('pt-BR');
+        return '<div class="sub-row"><b>' + esc(s.name) + '</b><span>' + esc(s.email) +
+          '</span><small>' + d + '</small></div>';
+      }).join('');
+  } catch { box.innerHTML = '<div class="hint">Erro ao carregar.</div>'; }
+}
+
 async function deleteTemplate(id, name) {
   if (!confirm(`Excluir "${name}"?\nEssa acao nao pode ser desfeita.`)) return;
   await fetch('/api/templates/' + id, { method: 'DELETE' });
@@ -141,6 +165,7 @@ async function deleteTemplate(id, name) {
     enableUI(false);
     $('#props').hidden = true;
     $('#url-panel').hidden = true;
+    $('#form-panel').hidden = true;
     $('#tpl-name').value = '';
   }
   await loadList();
@@ -154,10 +179,25 @@ async function openTemplate(id) {
   $('#tpl-name').value = state.tpl.name;
   $('#tpl-folder').value = state.tpl.folder || '';
   $('#tpl-format').value = state.tpl.format || 'png';
+  setupFormPanel();
   await loadList();
   renderStage();
   renderProps();
   renderUrlPanel();
+}
+
+function setupFormPanel() {
+  $('#form-panel').hidden = false;
+  $('#f-enabled').checked = !!state.tpl.useForm;
+  $('#f-emails').value = (state.tpl.emails || []).join('\n');
+  $('#f-config').hidden = !state.tpl.useForm;
+  updateEmailCount();
+  $('#subs-box').innerHTML = '';
+}
+
+function updateEmailCount() {
+  const n = $('#f-emails').value.split(/[\s,;]+/).filter((e) => e.includes('@')).length;
+  $('#f-count').textContent = n ? `${n} e-mail(s) autorizado(s)` : 'Nenhum e-mail — ninguém conseguirá emitir.';
 }
 
 // ---------- nova imagem / trocar fundo (upload) ----------
@@ -442,12 +482,16 @@ function renderShortcuts() {
   const q = qs ? '?' + qs : '';
   const s = qs ? '&' : '?';
   const id = state.tpl.id, o = location.origin;
-  const items = [
+  const items = [];
+  if ($('#f-enabled') && $('#f-enabled').checked) {
+    items.push({ label: '⭐ Formulário de emissão (envie ESTE link às pessoas)', url: `${o}/f/${id}` });
+  }
+  items.push(
     { label: 'Embedar imagem (PNG) — use no <img> do e-mail', url: `${o}/i/${id}${q}` },
     { label: 'Imagem JPG', url: `${o}/i/${id}${q}${s}formato=jpg` },
     { label: 'PDF (baixar)', url: `${o}/i/${id}${q}${s}formato=pdf&_dl=1` },
     { label: 'Página pública (mostra imagem + botões)', url: `${o}/view/${id}${q}` },
-  ];
+  );
   const box = $('#shortcuts');
   box.innerHTML = '';
   for (const it of items) {
@@ -482,12 +526,18 @@ $('#btn-save').onclick = async () => {
     folder: $('#tpl-folder').value || '',
     width: state.tpl.width, height: state.tpl.height,
     background: state.tpl.background, format: $('#tpl-format').value,
+    useForm: $('#f-enabled').checked,
+    emails: $('#f-emails').value,
     elements: state.tpl.elements,
   };
-  await api.json('PUT', '/api/templates/' + state.tpl.id, payload);
+  const saved = await api.json('PUT', '/api/templates/' + state.tpl.id, payload);
   state.tpl.format = payload.format;
   state.tpl.name = payload.name;
   state.tpl.folder = payload.folder;
+  state.tpl.useForm = saved.useForm;
+  state.tpl.emails = saved.emails;
+  $('#f-emails').value = (saved.emails || []).join('\n');
+  updateEmailCount();
   await loadList();
   flash('Salvo!');
 };
@@ -509,6 +559,7 @@ function enableUI(on) {
   $('#btn-swap-bg').disabled = !on;
   $('#stage-empty').hidden = on;
   $('#stage-wrap').hidden = !on;
+  if (!on) $('#form-panel').hidden = true;
 }
 
 window.addEventListener('resize', () => { if (state.tpl) renderStage(); });

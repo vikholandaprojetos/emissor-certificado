@@ -107,6 +107,24 @@
         </div>
       </div>
 
+      <div id="form-panel" class="panel" hidden>
+        <div class="panel-head">Formulário de emissão (opcional)</div>
+        <div class="panel-body">
+          <label class="chk"><input id="f-enabled" type="checkbox"> Ativar formulário de 3 etapas (e-mail → nome → confirmar)</label>
+          <div id="f-config" hidden style="margin-top:10px">
+            <label>E-mails autorizados (um por linha)
+              <textarea id="f-emails" rows="5" placeholder="fulano@email.com&#10;ciclana@email.com"></textarea>
+            </label>
+            <div id="f-count" class="hint"></div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-open-form" class="btn small" type="button">Abrir formulário</button>
+              <button id="btn-subs" class="btn small" type="button">Ver emissões</button>
+            </div>
+            <div id="subs-box"></div>
+          </div>
+        </div>
+      </div>
+
       <div id="url-panel" class="panel" hidden>
         <div class="panel-head">Compartilhar / URLs</div>
         <div class="panel-body">

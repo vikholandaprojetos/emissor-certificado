@@ -62,6 +62,25 @@ export const templates = {
   },
 };
 
+// ---- Envios do formulario (email + nome + data) por template ----
+export async function addSubmission(templateId, sub) {
+  requireToken();
+  const rec = { id: nanoid(10), email: sub.email, name: sub.name, at: Date.now() };
+  await put(`submissions/${templateId}/${rec.id}.json`, JSON.stringify(rec), {
+    access: 'public', contentType: 'application/json', addRandomSuffix: false,
+  });
+  return rec;
+}
+
+export async function listSubmissions(templateId) {
+  requireToken();
+  const { blobs } = await list({ prefix: `submissions/${templateId}/` });
+  const arr = await Promise.all(
+    blobs.map((b) => fetch(b.url, { cache: 'no-store' }).then((r) => r.json()).catch(() => null))
+  );
+  return arr.filter(Boolean).sort((a, b) => b.at - a.at);
+}
+
 // Sobe a imagem de fundo e devolve a URL publica.
 export async function putUpload(file) {
   requireToken();
