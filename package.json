@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node src/server.js",
+    "start:prod": "node --env-file=.env src/server.js",
     "dev": "node --watch src/server.js",
     "build:assets": "node scripts/build-assets.mjs"
   },
