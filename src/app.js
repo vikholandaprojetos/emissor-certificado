@@ -223,6 +223,16 @@ app.get('/i/:id', wrap(async (req, res) => {
   }
 }));
 
+// diagnostico temporario: grava com cacheControlMaxAge:0 e devolve a URL p/ checar headers
+app.get('/_diag/cache', wrap(async (_req, res) => {
+  const { put } = await import('@vercel/blob');
+  const r = await put(`diag/cachetest.json`, JSON.stringify({ t: Date.now() }), {
+    access: 'public', contentType: 'application/json',
+    addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 0,
+  });
+  res.json({ url: r.url });
+}));
+
 app.get('/healthz', (_req, res) =>
   res.json({
     ok: true,
