@@ -4,7 +4,7 @@ function esc(s) {
 }
 
 export function formPage(id, tpl) {
-  const title = esc(tpl.name || 'Seu Certificado');
+  const title = esc(tpl.publicTitle || tpl.name || 'Seu Certificado');
   return `<!doctype html>
 <html lang="pt-br">
 <head>
@@ -54,8 +54,12 @@ export function formPage(id, tpl) {
   .preview { background: #eef4ff; border: 1px solid #dbeafe; border-radius: 12px; padding: 22px; text-align: center; margin-bottom: 16px; }
   .preview small { color: #64748b; }
   .preview .name { font-size: 30px; color: #1e3a8a; margin-top: 6px; font-family: Georgia, serif; }
-  .frame { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+  .frame { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 16px; background: #f8fafc; }
   .frame img { display: block; width: 100%; height: auto; }
+  .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 70px 20px; color: #64748b; }
+  .spinner { width: 46px; height: 46px; border: 4px solid #e2e8f0; border-top-color: #0f9d63; border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .btn.disabled { opacity: .55; pointer-events: none; }
   .muted { color: #64748b; font-size: 13px; text-align: center; }
   .spin { pointer-events: none; opacity: .7; }
 </style>
@@ -129,13 +133,29 @@ function viewConfirm() {
     '<button class="btn green" id="go">✨ Está perfeito! Gerar</button></div></div>';
 }
 function viewDone() {
-  const q = 'nome=' + encodeURIComponent(st.name);
+  const q = new URLSearchParams({ ...PARAMS, nome: st.name }).toString();
   const img = '/i/' + ID + '?' + q + '&_format=png';
   const pdf = '/i/' + ID + '?' + q + '&formato=pdf&_dl=1';
-  return '<div class="card"><h2>🎉 Seu certificado está pronto!</h2>' +
-    '<p class="lead">Confira abaixo e clique no botão para baixar.</p>' +
-    '<div class="frame"><img src="' + img + '" alt="certificado"></div>' +
-    '<a class="btn green" href="' + pdf + '" download>⬇ Baixar certificado em PDF</a></div>';
+  return '<div class="card"><h2 id="doneh2">⏳ Gerando seu certificado...</h2>' +
+    '<p class="lead" id="donelead">Isso pode levar alguns segundos. Aguarde...</p>' +
+    '<div class="frame">' +
+      '<div class="loading" id="loading"><div class="spinner"></div><span>Gerando seu certificado...</span></div>' +
+      '<img id="certimg" src="' + img + '" alt="certificado" style="display:none" onload="onCertLoad()" onerror="onCertError()">' +
+    '</div>' +
+    '<a class="btn green disabled" id="pdfbtn" href="' + pdf + '" download>⬇ Baixar certificado em PDF</a></div>';
+}
+
+function onCertLoad() {
+  var l = document.getElementById('loading'); if (l) l.style.display = 'none';
+  var i = document.getElementById('certimg'); if (i) i.style.display = 'block';
+  var h = document.getElementById('doneh2'); if (h) h.textContent = '🎉 Seu certificado está pronto!';
+  var p = document.getElementById('donelead'); if (p) p.textContent = 'Confira abaixo e clique no botão para baixar.';
+  var b = document.getElementById('pdfbtn'); if (b) b.classList.remove('disabled');
+}
+function onCertError() {
+  var l = document.getElementById('loading');
+  if (l) l.innerHTML = '<span style="color:#b91c1c">Não foi possível gerar agora. Recarregue a página e tente de novo.</span>';
+  var h = document.getElementById('doneh2'); if (h) h.textContent = '😕 Ops...';
 }
 
 function showErr(msg) { const e = document.getElementById('err'); if (e) { e.textContent = msg; e.style.display = 'block'; } }

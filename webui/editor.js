@@ -188,6 +188,7 @@ function setupFormPanel() {
   $('#f-emails').value = (state.tpl.emails || []).join('\n');
   $('#f-config').hidden = !state.tpl.useForm;
   updateEmailCount();
+  $('#pub-title').value = state.tpl.publicTitle || '';
   $('#webhook-panel').hidden = false;
   $('#wh-url').value = state.tpl.webhookUrl || '';
   $('#wh-test-res').textContent = '';
@@ -527,6 +528,7 @@ $('#btn-save').onclick = async () => {
     useForm: $('#f-enabled').checked,
     emails: $('#f-emails').value,
     webhookUrl: $('#wh-url').value,
+    publicTitle: $('#pub-title').value,
     elements: state.tpl.elements,
   };
   const saved = await api.json('PUT', '/api/templates/' + state.tpl.id, payload);
@@ -536,6 +538,7 @@ $('#btn-save').onclick = async () => {
   state.tpl.useForm = saved.useForm;
   state.tpl.emails = saved.emails;
   state.tpl.webhookUrl = saved.webhookUrl;
+  state.tpl.publicTitle = saved.publicTitle;
   $('#f-emails').value = (saved.emails || []).join('\n');
   updateEmailCount();
   await loadList();

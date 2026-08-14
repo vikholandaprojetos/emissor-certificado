@@ -44,16 +44,32 @@ export function viewPage(id, qs, name, imgFormat = 'png') {
     .btn.ghost:hover { box-shadow: none; background: rgba(232,200,119,.08); }
     .actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
     .hint { color: #8b93a1; font-size: 13px; }
+    .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 70px 20px; color: #8b93a1; }
+    .spinner { width: 46px; height: 46px; border: 4px solid #2c313b; border-top-color: #e8c877; border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .actions.disabled { opacity: .5; pointer-events: none; }
   </style>
 </head>
 <body>
   <h1>${esc(name || 'Seu certificado')}</h1>
-  <div class="frame"><img src="${esc(imgUrl)}" alt="${esc(name || 'certificado')}"></div>
-  <div class="actions">
+  <div class="frame">
+    <div class="loading" id="loading"><div class="spinner"></div><span>Gerando seu certificado...</span></div>
+    <img id="certimg" src="${esc(imgUrl)}" alt="${esc(name || 'certificado')}" style="display:none">
+  </div>
+  <div class="actions disabled" id="actions">
     <a class="btn" href="${esc(dlUrl)}" download>⬇ Baixar imagem</a>
     <a class="btn ghost" href="${esc(pdfUrl)}" download>⬇ Baixar PDF</a>
   </div>
-  <div class="hint">Clique para salvar em alta resolução.</div>
+  <div class="hint" id="hint">Aguarde, gerando em alta resolução...</div>
+  <script>
+    var img = document.getElementById('certimg');
+    function done(){ document.getElementById('loading').style.display='none'; img.style.display='block';
+      document.getElementById('actions').classList.remove('disabled');
+      document.getElementById('hint').textContent='Clique para salvar em alta resolução.'; }
+    function fail(){ document.getElementById('loading').innerHTML='<span style="color:#fca5a5">Erro ao gerar. Recarregue a página.</span>'; }
+    img.addEventListener('load', done); img.addEventListener('error', fail);
+    if (img.complete && img.naturalWidth) done();
+  </script>
 </body>
 </html>`;
 }

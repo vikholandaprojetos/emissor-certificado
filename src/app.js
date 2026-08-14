@@ -63,7 +63,7 @@ app.get('/view/:id', wrap(async (req, res) => {
     fireWebhook(tpl, { name, email: null, params: values });
   }
   const qs = new URLSearchParams(values).toString();
-  res.type('html').send(viewPage(req.params.id, qs, tpl.name, imgFmt));
+  res.type('html').send(viewPage(req.params.id, qs, tpl.publicTitle || tpl.name, imgFmt));
 }));
 
 // ---- Formulario publico de emissao em 3 etapas: /f/:id ----
@@ -151,6 +151,7 @@ function normalizeData(body) {
     useForm: !!body.useForm,
     emails: parseEmails(body.emails),
     webhookUrl: (body.webhookUrl || '').trim(),
+    publicTitle: (body.publicTitle || '').trim(),
     elements: Array.isArray(body.elements) ? body.elements : [],
   };
 }
