@@ -114,13 +114,14 @@ app.get('/admin/logout', (_req, res) => {
 });
 
 // ---- Assets do painel (nao sensiveis: apenas client-side) ----
-app.get('/admin/style.css', (_req, res) => res.type('css').send(ASSETS.css));
-app.get('/admin/editor.js', (_req, res) => res.type('js').send(ASSETS.js));
+// no-store: o navegador sempre pega a versao mais nova do painel
+app.get('/admin/style.css', (_req, res) => res.set('Cache-Control', 'no-store').type('css').send(ASSETS.css));
+app.get('/admin/editor.js', (_req, res) => res.set('Cache-Control', 'no-store').type('js').send(ASSETS.js));
 
 // ---- Painel (protegido) ----
 app.get(['/admin', '/admin/'], (req, res) => {
   if (!isAuthed(req)) return res.redirect('/admin/login');
-  res.type('html').send(ASSETS.index);
+  res.set('Cache-Control', 'no-store').type('html').send(ASSETS.index);
 });
 
 // ---- API (protegida) ----
